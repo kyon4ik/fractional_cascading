@@ -1,7 +1,32 @@
+//! Fractional cascading over a fixed collection of sorted slices.
+//!
+//! Given `k` sorted slices, [`FCSearcher`] answers "how many elements are
+//! strictly less than `x` in each slice?" in O(log n + k) time after O(n)
+//! preprocessing, compared to O(k log n) for naive repeated binary search.
+//!
+//! ```
+//! use fractional_cascading::FCSearcher;
+//!
+//! let sources = vec![vec![1, 3, 6, 10], vec![2, 4, 5, 7, 8, 9]];
+//! let searcher = FCSearcher::new(&sources);
+//!
+//! // Number of elements strictly less than 6 in each source, in source order.
+//! assert_eq!(searcher.search(&6), [2, 3]);
+//!
+//! // Same result via the lazy iterator (yields in reverse source order).
+//! let rev: Vec<_> = searcher.search_iter(&6).collect();
+//! assert_eq!(rev, [3, 2]);
+//! ```
+
 use num_traits::Bounded;
 use std::borrow::Borrow;
 use std::iter::FusedIterator;
 
+/// Fractional cascading structure over a fixed collection of sorted slices.
+///
+/// Answers "how many elements are strictly less than `key` in each slice?"
+/// in O(log n + k) time after O(n) preprocessing, where `n` is the total
+/// number of elements and `k` is the number of slices.
 #[derive(Clone, Debug)]
 pub struct FCSearcher<T> {
     cats: Vec<Vec<Node<T>>>,
@@ -17,6 +42,10 @@ struct Node<T> {
 }
 
 impl<T: Clone + Ord + Bounded> FCSearcher<T> {
+    /// Build a `FCSearcher` from an iterator of sorted slices.
+    ///
+    /// Each source slice must be sorted in ascending order; behaviour is
+    /// unspecified if this invariant is violated.
     pub fn new<'slc, I, S>(sources: I) -> Self
     where
         S: Borrow<[T]> + 'slc,
@@ -41,10 +70,16 @@ impl<T: Clone + Ord + Bounded> FCSearcher<T> {
         Self { cats }
     }
 
+    /// Return a lazy iterator that yields, for each source slice in **reverse** order
+    /// (last to first), the number of elements strictly less than `key`.
+    ///
+    /// Use [`search`](Self::search) to get results in source order.
     pub fn search_iter<'s, 'k>(&'s self, key: &'k T) -> FcIter<'s, 'k, T> {
         FcIter::new(&self.cats, key)
     }
 
+    /// Return the number of elements strictly less than `key` in each source slice,
+    /// in source order (first to last).
     #[must_use]
     pub fn search(&self, key: &T) -> Vec<usize> {
         let mut res: Vec<_> = self.search_iter(key).collect();
@@ -53,6 +88,10 @@ impl<T: Clone + Ord + Bounded> FCSearcher<T> {
     }
 }
 
+/// Lazy iterator returned by [`FCSearcher::search_iter`].
+///
+/// Yields the number of elements strictly less than the search key in each
+/// source slice, in reverse source order (last slice first).
 pub struct FcIter<'a, 'k, T> {
     key: &'k T,
     node: Option<&'a Node<T>>,

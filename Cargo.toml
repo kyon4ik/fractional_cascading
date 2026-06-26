@@ -4,16 +4,16 @@ version = "0.3.0"
 authors = ["Innokentiy Popov"]
 edition = "2021"
 readme = "README.md"
-repository = "https://github.com/Great1ng/fractional_cascading"
+repository = "https://github.com/kyon4ik/fractional_cascading"
 license = "MIT License"
 keywords = ["fractional_cascading", "search"]
 
 [dependencies]
-num-traits = "0.2.17"
+num-traits = "0.2"
 
 [dev-dependencies]
-rand = { version = "0.8.5", features = ["small_rng"] }
-criterion = "0.5.1"
+rand = { version = "0.8", features = ["small_rng"] }
+criterion = "0.5"
 
 [[test]]
 name = "random_data"

@@ -15,10 +15,9 @@ struct Node<T> {
     nnxt: usize,
 }
 
-impl<'val, T: Clone + Ord + Bounded + 'val> FCSearcher<T> {
+impl<T: Clone + Ord + Bounded> FCSearcher<T> {
     pub fn new<'slc, I, S>(sources: I) -> Self
     where
-        'val: 'slc,
         S: Borrow<[T]> + 'slc,
         I: IntoIterator<Item = &'slc S>,
     {
@@ -54,8 +53,8 @@ impl<'val, T: Clone + Ord + Bounded + 'val> FCSearcher<T> {
             res.push(node.ncur);
 
             for cat in cats {
-                // Safety: 0 <= node.nnxt - 1 < node.nnxt < cat.len() 
-                if node.nnxt > 0 && unsafe {cat.get_unchecked(node.nnxt - 1)}.val >= *key {
+                // Safety: 0 <= node.nnxt - 1 < node.nnxt < cat.len()
+                if node.nnxt > 0 && unsafe { cat.get_unchecked(node.nnxt - 1) }.val >= *key {
                     node = unsafe { cat.get_unchecked(node.nnxt - 1) };
                 } else {
                     // Safety: node.nnxt <= cat.len()

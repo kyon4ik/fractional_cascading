@@ -1,6 +1,6 @@
 [package]
 name = "fractional_cascading"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Innokentiy Popov"]
 edition = "2021"
 readme = "README.md"

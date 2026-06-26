@@ -1,5 +1,6 @@
 use num_traits::Bounded;
 use std::borrow::Borrow;
+use std::iter::FusedIterator;
 
 #[derive(Clone, Debug)]
 pub struct FCSearcher<T> {
@@ -40,34 +41,79 @@ impl<T: Clone + Ord + Bounded> FCSearcher<T> {
         Self { cats }
     }
 
-    // TODO: return iterator
-    // TODO: custom first search function
+    pub fn search_iter<'s, 'k>(&'s self, key: &'k T) -> FcIter<'s, 'k, T> {
+        FcIter::new(&self.cats, key)
+    }
+
+    #[must_use]
     pub fn search(&self, key: &T) -> Vec<usize> {
-        let mut res = Vec::with_capacity(self.cats.len());
-
-        if let Some((first_cat, cats)) = self.cats.split_first() {
-            let pos = first_cat.partition_point(|node| node.val < *key);
-
-            // Safety: pos <= first_cat.len()
-            let mut node = unsafe { first_cat.get_unchecked(pos) };
-            res.push(node.ncur);
-
-            for cat in cats {
-                // Safety: 0 <= node.nnxt - 1 < node.nnxt < cat.len()
-                if node.nnxt > 0 && unsafe { cat.get_unchecked(node.nnxt - 1) }.val >= *key {
-                    node = unsafe { cat.get_unchecked(node.nnxt - 1) };
-                } else {
-                    // Safety: node.nnxt <= cat.len()
-                    node = unsafe { cat.get_unchecked(node.nnxt) };
-                }
-                res.push(node.ncur);
-            }
-        }
-
+        let mut res: Vec<_> = self.search_iter(key).collect();
         res.reverse();
         res
     }
 }
+
+pub struct FcIter<'a, 'k, T> {
+    key: &'k T,
+    node: Option<&'a Node<T>>,
+    cats: core::slice::Iter<'a, Vec<Node<T>>>,
+}
+
+impl<'a, 'k, T: Ord> FcIter<'a, 'k, T> {
+    fn new(cats: &'a [Vec<Node<T>>], key: &'k T) -> Self {
+        if let Some((first_cat, cats)) = cats.split_first() {
+            let pos = first_cat.partition_point(|node| node.val < *key);
+
+            // Safety: pos < first_cat.len()
+            let node = unsafe { first_cat.get_unchecked(pos) };
+            Self {
+                key,
+                node: Some(node),
+                cats: cats.iter(),
+            }
+        } else {
+            Self {
+                key,
+                node: None,
+                cats: cats.iter(),
+            }
+        }
+    }
+}
+
+impl<T: Ord> Iterator for FcIter<'_, '_, T> {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let cur = self.node.take()?;
+
+        if let Some(cat) = self.cats.next() {
+            // Safety: cur.nnxt < cat.len()
+            let nxt = unsafe { cat.get_unchecked(cur.nnxt) };
+
+            if cur.nnxt > 0 {
+                // Safety: cur.nnxt > 0
+                let before_nxt = unsafe { cat.get_unchecked(cur.nnxt - 1) };
+                self.node = if before_nxt.val >= *self.key {
+                    Some(before_nxt)
+                } else {
+                    Some(nxt)
+                };
+            } else {
+                self.node = Some(nxt);
+            }
+        }
+
+        Some(cur.ncur)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.cats.len() + 1;
+        (len, Some(len))
+    }
+}
+
+impl<T: Ord> FusedIterator for FcIter<'_, '_, T> {}
 
 fn cat_from_src<T: Clone + Eq + Bounded>(src: &[T]) -> Vec<Node<T>> {
     let mut res = Vec::with_capacity(src.len() + 1);

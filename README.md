@@ -1,12 +1,8 @@
 # Implementation of Fractional Cascading DS
 
-### Benchmarks of v0.2.0
-OS: Ubuntu 22.04.2 LTS x86_64<br>
+### Benchmarks of v0.3.1
 CPU: AMD Ryzen 5 4600H with Radeon Graphics (12) @ 3.000GHz<br>
 ![Benchmark plot](./docs/lines.svg)
-
-### Benchmarks of v0.3.0
-TBD
 
 ### Based on:
 * [`wikipedia`](https://en.wikipedia.org/wiki/Fractional_cascading)
